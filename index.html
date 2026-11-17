@@ -12,15 +12,18 @@
   --eq:#e0864a;--ust:#4fb3a6;--etc:#8e8fa8;--green:#4cc76a;--warn:#e5b94e;--bad:#e5645e}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 "Pretendard","Malgun Gothic",system-ui,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
-header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 10px 0;padding-top:max(8px,env(safe-area-inset-top))}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top))}
+/* 탭·리스트는 화면 아래(엄지 닿는 곳)에 고정 */
+#bnav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--panel);border-top:1px solid var(--line);padding:0 10px env(safe-area-inset-bottom)}
+body{padding-bottom:calc(var(--bnav,54px) + env(safe-area-inset-bottom))}
 .top{display:flex;align-items:center;gap:8px}
 .top h1{font-size:16px;margin:0;color:var(--green)}
 .top .sync{font-size:11.5px;color:var(--muted);margin-left:auto;text-align:right}
 button,select,input{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 button{cursor:pointer}
 #refresh{padding:5px 10px}
-.tabs{display:flex;margin-top:8px}
-.tab{flex:1;text-align:center;padding:8px 0;color:var(--muted);border-bottom:2px solid transparent;font-size:14.5px}
+.tabs{display:flex}
+.tab{flex:1;text-align:center;padding:10px 0 11px;color:var(--muted);border-top:2px solid transparent;font-size:14.5px}
 .tab.on{color:var(--text);border-color:var(--acc);font-weight:600}
 .filters{padding:8px 10px;display:flex;flex-direction:column;gap:7px;border-bottom:1px solid var(--line);background:var(--bg)}
 .row{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none}
@@ -31,7 +34,7 @@ button{cursor:pointer}
 .c-주식{--c:var(--eq)} .c-FICC{--c:var(--ust)} .c-기타{--c:var(--etc)}
 .chip.c-주식.on,.chip.c-FICC.on,.chip.c-기타.on{border-color:var(--c);color:var(--c)}
 .row select{flex:none;max-width:46%}
-.lrow{padding:7px 0 8px}
+.lrow{padding:7px 0 6px;border-bottom:1px solid var(--line)}
 .lchip{flex:none;padding:3px 11px;border-radius:14px;border:1px solid var(--line);color:var(--muted);font-size:13px;user-select:none;white-space:nowrap}
 .lchip.on{color:var(--text);border-color:var(--acc);background:var(--panel2);font-weight:600}
 .lchip .n{opacity:.6;margin-left:3px;font-size:11.5px}
@@ -94,16 +97,18 @@ mark{background:#4c8dff44;color:inherit;border-radius:2px}
     <select id="days" title="기간"><option value="1">1일</option><option value="3">3일</option><option value="7" selected>1주</option><option value="30">1달</option></select>
     <button id="refresh" title="새로고침">↻</button>
     <div class="sync" id="sync"></div></div>
-  <div class="tabs">
-    <div class="tab on" data-t="x">X</div><div class="tab" data-t="xsum">X 요약</div><div class="tab" data-t="blog">블로그</div><div class="tab" data-t="yt">유튜브</div>
-  </div>
-  <div class="row lrow hide" id="listChips"></div>
 </header>
 <div class="filters" id="filters">
   <div class="row" id="catChips"></div>
   <div class="row"><button id="whoBtn">전체 계정 ▾</button><input id="q" type="search" placeholder="검색"></div>
 </div>
 <main id="out"></main>
+<nav id="bnav">
+  <div class="row lrow hide" id="listChips"></div>
+  <div class="tabs">
+    <div class="tab on" data-t="x">X</div><div class="tab" data-t="xsum">X 요약</div><div class="tab" data-t="blog">블로그</div><div class="tab" data-t="yt">유튜브</div>
+  </div>
+</nav>
 <div id="scrim"></div>
 <aside id="drawer"><div class="dh"><b id="dTitle">계정</b><button id="dClose">✕</button></div>
   <input id="dq" type="search" placeholder="계정 찾기"><div id="dlist"></div></aside>
@@ -132,10 +137,13 @@ const LK={x:"x",xsum:"x",blog:"bl",yt:"yt"};
 const nk=(k,v)=>k==="yt"?(v||""):(v||"").toLowerCase();
 const curList=()=>{const k=LK[TAB];return ((D&&D.lists&&D.lists[k])||[]).find(l=>l.name===LSEL[k])||null};
 const inL=v=>{const l=curList(),k=LK[TAB];return !l||l.members.some(m=>nk(k,m)===nk(k,v))};
+const padBottom=()=>document.body.style.setProperty("--bnav",$("#bnav").offsetHeight+"px");  // 아래 막대 높이만큼 본문 여백
+addEventListener("resize",padBottom);
 function renderLists(){
   const k=LK[TAB], L=(D&&D.lists&&D.lists[k])||[], el=$("#listChips");
   if(LSEL[k]&&!L.some(l=>l.name===LSEL[k]))LSEL[k]=null;      // PC에서 지워진 리스트
   el.classList.toggle("hide",!L.length);
+  padBottom();
   el.innerHTML=`<span class="lchip ${!LSEL[k]?"on":""}" data-l="">전체</span>`+
     L.map(l=>`<span class="lchip ${LSEL[k]===l.name?"on":""}" data-l="${esc(l.name)}">${esc(l.name)}<span class="n">${l.members.length}</span></span>`).join("");
   el.querySelectorAll(".lchip").forEach(c=>c.onclick=()=>{LSEL[k]=c.dataset.l||null;ls.set("xyt_list",LSEL);
@@ -149,7 +157,7 @@ async function rpc(fn,body){
   const t=await r.text();return t?JSON.parse(t):null;
 }
 async function load(){
-  if(!TOKEN){$("#login").classList.remove("hide");$("#filters").classList.add("hide");$("#out").innerHTML="";return}
+  if(!TOKEN){$("#login").classList.remove("hide");$("#bnav").classList.add("hide");$("#filters").classList.add("hide");$("#out").innerHTML="";return}
   $("#sync").textContent="불러오는 중…";
   try{
     D=await rpc("xyt_feed",{p_days:+$("#days").value});ls.set("xyt_cache",D);
@@ -267,7 +275,7 @@ document.addEventListener("touchend",e=>{if(sx==null)return;const t=e.changedTou
 // 휴대폰 '뒤로가기'로 패널 닫기
 window.addEventListener("popstate",()=>{if($("#drawer").classList.contains("on"))closeDrawer(true)});
 history.scrollRestoration="manual";
-$("#tokSave").onclick=()=>{const v=$("#tok").value.trim();if(!v)return;TOKEN=v;ls.set("xyt_token",v);$("#login").classList.add("hide");$("#filters").classList.remove("hide");load()};
+$("#tokSave").onclick=()=>{const v=$("#tok").value.trim();if(!v)return;TOKEN=v;ls.set("xyt_token",v);$("#login").classList.add("hide");$("#bnav").classList.remove("hide");$("#filters").classList.remove("hide");load()};
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&TOKEN)load()});   // 앱으로 돌아오면 자동 새로고침
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 if(D)render();
