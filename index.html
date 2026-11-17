@@ -68,8 +68,8 @@ mark{background:#4c8dff44;color:inherit;border-radius:2px}
 #menuBtn{padding:5px 10px}
 #scrim{position:fixed;inset:0;background:#0009;z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
 #scrim.on{opacity:1;pointer-events:auto}
-#drawer{position:fixed;top:0;right:0;bottom:0;width:min(82vw,330px);background:var(--panel);border-left:1px solid var(--line);z-index:21;
-  transform:translateX(100%);transition:transform .22s ease;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+#drawer{position:fixed;top:0;left:0;bottom:0;width:min(82vw,330px);background:var(--panel);border-right:1px solid var(--line);z-index:21;
+  transform:translateX(-100%);transition:transform .22s ease;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
 #drawer.on{transform:none}
 #drawer .dh{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
 #drawer .dh b{font-size:15px}#drawer .dh button{margin-left:auto}
@@ -86,9 +86,9 @@ mark{background:#4c8dff44;color:inherit;border-radius:2px}
 </head>
 <body>
 <header>
-  <div class="top"><h1>xyt digest</h1>
+  <div class="top"><button id="menuBtn" title="계정 목록">☰</button><h1>xyt digest</h1>
     <select id="days" title="기간"><option value="1">1일</option><option value="3">3일</option><option value="7" selected>1주</option><option value="30">1달</option></select>
-    <button id="refresh" title="새로고침">↻</button><button id="menuBtn" title="계정 목록">☰</button>
+    <button id="refresh" title="새로고침">↻</button>
     <div class="sync" id="sync"></div></div>
   <div class="tabs">
     <div class="tab on" data-t="x">X</div><div class="tab" data-t="blog">블로그</div><div class="tab" data-t="xsum">X 요약</div><div class="tab" data-t="yt">유튜브</div>
@@ -231,16 +231,23 @@ function renderDrawer(){
     `<div class="empty" style="margin:10px">${TAB==="yt"?"유튜브 탭에는 계정 목록이 없습니다":"목록 없음"}</div>`;
   document.querySelectorAll("#dlist .acc").forEach(e=>e.onclick=()=>{WHO[TAB]=e.dataset.a;ls.set("xyt_who",WHO);closeDrawer();render();scrollTo(0,0)});
 }
-function openDrawer(){$("#dq").value="";renderDrawer();$("#drawer").classList.add("on");$("#scrim").classList.add("on")}
-function closeDrawer(){$("#drawer").classList.remove("on");$("#scrim").classList.remove("on")}
+function openDrawer(){$("#dq").value="";renderDrawer();$("#drawer").classList.add("on");$("#scrim").classList.add("on");try{history.pushState({d:1},"")}catch(e){}}
+function closeDrawer(fromPop){$("#drawer").classList.remove("on");$("#scrim").classList.remove("on");if(!fromPop&&history.state&&history.state.d)history.back()}
 $("#menuBtn").onclick=openDrawer;$("#whoBtn").onclick=openDrawer;$("#dClose").onclick=closeDrawer;$("#scrim").onclick=closeDrawer;
 $("#dq").oninput=renderDrawer;
-// 스와이프: 화면 오른쪽 끝에서 왼쪽으로 → 열기, 패널을 오른쪽으로 → 닫기
-let sx=null,sy=0,edge=false;
-document.addEventListener("touchstart",e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;edge=sx>innerWidth-28},{passive:true});
+// 스와이프: 화면에서 오른쪽으로 밀기 → 열기, 왼쪽으로 밀기 → 닫기
+// (안드로이드는 화면 맨 가장자리 스와이프를 '뒤로가기'로 가져가므로 가장자리가 아닌 곳에서도 인식)
+let sx=null,sy=0,ok=false;
+document.addEventListener("touchstart",e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;
+  ok=!e.target.closest(".row,select,input,textarea,.clamp.open")},{passive:true});
 document.addEventListener("touchend",e=>{if(sx==null)return;const t=e.changedTouches[0],dx=t.clientX-sx,dy=Math.abs(t.clientY-sy);
   const open=$("#drawer").classList.contains("on");
-  if(dy<60){if(!open&&edge&&dx<-50&&TAB!=="yt")openDrawer();else if(open&&dx>60)closeDrawer()}sx=null},{passive:true});
+  if(dy<Math.max(50,Math.abs(dx)*0.6)){
+    if(!open&&ok&&dx>70&&sx<innerWidth*0.6&&TAB!=="yt")openDrawer();
+    else if(open&&dx<-60)closeDrawer()}
+  sx=null},{passive:true});
+// 휴대폰 '뒤로가기'로 패널 닫기
+window.addEventListener("popstate",()=>{if($("#drawer").classList.contains("on"))closeDrawer(true)});
 history.scrollRestoration="manual";
 $("#tokSave").onclick=()=>{const v=$("#tok").value.trim();if(!v)return;TOKEN=v;ls.set("xyt_token",v);$("#login").classList.add("hide");$("#filters").classList.remove("hide");load()};
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&TOKEN)load()});   // 앱으로 돌아오면 자동 새로고침
