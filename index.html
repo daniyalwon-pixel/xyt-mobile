@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>xyt digest</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#161b22">
+<style>
+:root{--bg:#0f1216;--panel:#161b22;--panel2:#1c232c;--line:#2a323d;--text:#e6e9ee;--muted:#8b95a3;--acc:#4c8dff;
+  --eq:#e0864a;--ust:#4fb3a6;--etc:#8e8fa8;--green:#4cc76a;--warn:#e5b94e;--bad:#e5645e}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 "Pretendard","Malgun Gothic",system-ui,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 10px 0;padding-top:max(8px,env(safe-area-inset-top))}
+.top{display:flex;align-items:center;gap:8px}
+.top h1{font-size:16px;margin:0;color:var(--green)}
+.top .sync{font-size:11.5px;color:var(--muted);margin-left:auto;text-align:right}
+button,select,input{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}
+#refresh{padding:5px 10px}
+.tabs{display:flex;margin-top:8px}
+.tab{flex:1;text-align:center;padding:8px 0;color:var(--muted);border-bottom:2px solid transparent;font-size:14.5px}
+.tab.on{color:var(--text);border-color:var(--acc);font-weight:600}
+.filters{padding:8px 10px;display:flex;flex-direction:column;gap:7px;border-bottom:1px solid var(--line);background:var(--bg)}
+.row{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none}
+.row::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:4px 11px;border-radius:14px;border:1px solid var(--line);color:var(--muted);font-size:13px;user-select:none}
+.chip.on{color:var(--text);border-color:var(--text)}
+.chip .n{opacity:.65;margin-left:3px}
+.c-주식{--c:var(--eq)} .c-FICC{--c:var(--ust)} .c-기타{--c:var(--etc)}
+.chip.c-주식.on,.chip.c-FICC.on,.chip.c-기타.on{border-color:var(--c);color:var(--c)}
+.row select{flex:none;max-width:46%}
+.row input{flex:1;min-width:120px}
+main{padding:10px;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--c,var(--line));border-radius:10px;padding:10px 12px}
+.meta{display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.who{color:var(--green);font-weight:600}
+.kind{padding:0 6px;border-radius:4px;border:1px solid var(--line);font-size:11.5px}
+.card select{margin-left:auto;padding:1px 4px;font-size:12px;border-radius:6px}
+.txt{white-space:pre-wrap;word-break:break-word;margin-top:6px}
+.clamp{display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}
+.clamp.open{display:block}
+.ctx{margin-top:6px;font-size:13px;color:var(--muted);border-left:2px solid var(--line);padding-left:8px;white-space:pre-wrap;word-break:break-word}
+.ttl{display:block;font-weight:700;font-size:15.5px;margin-top:6px;color:var(--text);text-decoration:none}
+a{color:var(--acc)}
+.foot{display:flex;margin-top:6px;font-size:12.5px;color:var(--muted)} .foot a{margin-left:auto}
+.one{font-weight:700;margin:6px 0 4px}
+.idea{display:grid;grid-template-columns:auto 1fr;gap:3px 8px;padding:6px 0;border-top:1px dashed var(--line)}
+.tag{font-size:11.5px;padding:0 6px;border-radius:4px;border:1px solid var(--c,var(--line));color:var(--c,var(--muted));white-space:nowrap;display:inline-block;margin-bottom:2px}
+.st-강세{color:#e5645e;border-color:#e5645e66}.st-약세{color:#4c8dff;border-color:#4c8dff66}
+.idea b{font-size:14.5px}.idea p{margin:2px 0 0;color:#cdd3dc;font-size:14px}
+.refs a{font-size:12px;margin-right:6px;text-decoration:none}
+.asset{display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px}
+.asset>div{background:var(--panel2);border-radius:6px;padding:6px 8px;border-top:2px solid var(--c);font-size:13.5px}
+.asset b{color:var(--c);font-size:12px}
+.asset ul{margin:2px 0 0;padding-left:18px}
+ul.b{margin:4px 0;padding-left:18px}
+.watch{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.watch span{font-size:12px;border:1px solid var(--line);border-radius:10px;padding:0 8px}
+.shift{margin-top:6px;font-size:13px;color:var(--warn)}
+.empty{color:var(--muted);text-align:center;padding:40px 10px;border:1px dashed var(--line);border-radius:10px}
+.login{padding:40px 18px;text-align:center}
+.login input{width:100%;margin:12px 0}
+mark{background:#4c8dff44;color:inherit;border-radius:2px}
+.hide{display:none!important}
+.err{color:var(--bad)}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><h1>xyt digest</h1>
+    <select id="days" title="기간"><option value="1">1일</option><option value="3">3일</option><option value="7" selected>1주</option><option value="30">1달</option></select>
+    <button id="refresh" title="새로고침">↻</button>
+    <div class="sync" id="sync"></div></div>
+  <div class="tabs">
+    <div class="tab on" data-t="x">X</div><div class="tab" data-t="blog">블로그</div><div class="tab" data-t="xsum">X 요약</div><div class="tab" data-t="yt">유튜브</div>
+  </div>
+</header>
+<div class="filters" id="filters">
+  <div class="row" id="catChips"></div>
+  <div class="row" id="kindChips"></div>
+  <div class="row"><select id="who"></select><input id="q" type="search" placeholder="검색"></div>
+</div>
+<main id="out"></main>
+<div class="login hide" id="login">
+  <h2 style="color:var(--green)">xyt digest</h2>
+  <p style="color:var(--muted)">PC의 xyt digest → ⚙ → <b>휴대폰 앱</b>에서 QR을 찍어 여세요.<br>또는 접속 키를 붙여넣으세요.</p>
+  <input id="tok" placeholder="접속 키"><button id="tokSave">저장</button>
+</div>
+
+<script>
+const SUPA_URL="https://qorhocgbewmtzbbtsicn.supabase.co";
+const SUPA_KEY="sb_publishable_xHWACo4Il2KEzGK9neDsUw_7QYae--X";   // 공개용 키 (데이터는 접속 키 없이는 못 읽음)
+const CATS=["주식","FICC","기타"], KINDS=["글","댓글","스레드","인용","RT"];
+const $=s=>document.querySelector(s);
+const esc=s=>(s??"").toString().replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ls={get:(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+// 접속 키: QR 링크(#t=...)로 받아 이 기기에 저장, 주소창에서는 지움
+(function(){const m=location.hash.match(/t=([\w-]+)/);if(m){ls.set("xyt_token",m[1]);history.replaceState(null,"",location.pathname)}})();
+let TOKEN=ls.get("xyt_token","");
+let TAB=ls.get("xyt_tab","x"), D=ls.get("xyt_cache",null);
+let fCat=new Set(CATS), fKind=new Set(["글","댓글","스레드","인용"]);
+$("#days").value=String(ls.get("xyt_days",7));
+
+async function rpc(fn,body){
+  const r=await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`,{method:"POST",headers:{apikey:SUPA_KEY,"Content-Type":"application/json"},body:JSON.stringify({p_token:TOKEN,...body})});
+  if(!r.ok){const t=await r.text();throw new Error(t.includes("unauthorized")?"접속 키가 맞지 않습니다":t.slice(0,160))}
+  const t=await r.text();return t?JSON.parse(t):null;
+}
+async function load(){
+  if(!TOKEN){$("#login").classList.remove("hide");$("#filters").classList.add("hide");$("#out").innerHTML="";return}
+  $("#sync").textContent="불러오는 중…";
+  try{
+    D=await rpc("xyt_feed",{p_days:+$("#days").value});ls.set("xyt_cache",D);
+    $("#sync").textContent=D.synced?"PC 동기화 "+fmt(D.synced):"";
+  }catch(e){$("#sync").innerHTML=`<span class="err">${esc(e.message)}</span>`+(D?" · 이전 데이터":"");
+    if(String(e.message).includes("접속 키")){TOKEN="";ls.set("xyt_token","");$("#login").classList.remove("hide")}}
+  render();
+}
+function fmt(s){if(!s)return"";const d=new Date(s);const p=n=>String(n).padStart(2,"0");return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`}
+function hl(s,q){s=esc(s).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank">$1</a>');if(!q)return s;const r=new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi");return s.replace(/(<[^>]+>)|([^<]+)/g,(m,t,x)=>t?t:x.replace(r,y=>`<mark>${y}</mark>`))}
+
+function render(){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===TAB));
+  $("#filters").classList.toggle("hide",!D||TAB==="yt");
+  if(!D){$("#out").innerHTML=`<div class="empty">데이터 없음</div>`;return}
+  const q=$("#q").value.trim().toLowerCase(), who=$("#who").value;
+  if(TAB==="x"||TAB==="blog"){
+    const rows0=(TAB==="x"?D.x:D.blog)||[], key=TAB==="x"?"account":"blog";
+    const names=[...new Set(rows0.map(r=>r[key]))].sort();
+    const cur=who&&names.includes(who)?who:"";
+    $("#who").innerHTML=`<option value="">${TAB==="x"?"전체 계정":"전체 블로그"}</option>`+names.map(n=>`<option ${n===cur?"selected":""}>${esc(n)}</option>`).join("");
+    const base=rows0.filter(r=>(!cur||r[key]===cur)&&(TAB!=="x"||fKind.has(r.kind))&&(!q||JSON.stringify([r.text,r.title,r.reply_to_text]).toLowerCase().includes(q)));
+    $("#catChips").innerHTML=CATS.map(c=>`<span class="chip c-${c} ${fCat.has(c)?"on":""}" data-c="${c}">${c}<span class="n">${base.filter(r=>r.cat===c).length}</span></span>`).join("");
+    $("#kindChips").classList.toggle("hide",TAB!=="x");
+    $("#kindChips").innerHTML=KINDS.map(k=>`<span class="chip ${fKind.has(k)?"on":""}" data-k="${k}">${k}<span class="n">${rows0.filter(r=>r.kind===k).length}</span></span>`).join("");
+    const rows=base.filter(r=>fCat.has(r.cat));
+    $("#out").innerHTML=rows.map(r=>TAB==="x"?xCard(r,q):bCard(r,q)).join("")||`<div class="empty">조건에 맞는 글이 없습니다</div>`;
+  }else if(TAB==="xsum"){
+    $("#kindChips").classList.add("hide");$("#catChips").innerHTML="";
+    const names=[...new Set((D.xsum||[]).map(s=>s.account))].sort();
+    $("#who").innerHTML=`<option value="">계정별 최신</option>`+names.map(n=>`<option ${n===who?"selected":""}>${esc(n)}</option>`).join("");
+    let rows=D.xsum||[];
+    if(who)rows=rows.filter(s=>s.account===who);else{const seen=new Set();rows=rows.filter(s=>!seen.has(s.account)&&seen.add(s.account))}
+    if(q)rows=rows.filter(s=>JSON.stringify(s.summary).toLowerCase().includes(q));
+    $("#out").innerHTML=rows.map(sCard).join("")||`<div class="empty">요약이 없습니다 (PC의 X 요약 탭에서 생성)</div>`;
+  }else{
+    $("#out").innerHTML=(D.videos||[]).map(vCard).join("")||`<div class="empty">유튜브 요약이 없습니다</div>`;
+  }
+  wire();
+}
+const catSel=(r,kind)=>`<select data-k="${kind}" data-id="${esc(r.id)}">${CATS.map(c=>`<option ${r.cat===c?"selected":""}>${c}</option>`).join("")}<option value="">↺ 자동</option></select>`;
+function xCard(r,q){return `<div class="card c-${r.cat}"><div class="meta"><span class="who">@${esc(r.account)}</span><span>${fmt(r.created_at)}</span><span class="kind">${esc(r.kind)}</span>${catSel(r,"x")}</div>
+  ${r.reply_to_text?`<div class="ctx">↳ ${hl(r.reply_to_text.slice(0,300),q)}</div>`:""}
+  <div class="txt">${hl(r.text,q)}</div>${r.quoted_text?`<div class="ctx">❝ ${hl(r.quoted_text,q)}</div>`:""}
+  <div class="foot">${r.likes!=null?`♥ ${r.likes}`:""}${r.views?` · 조회 ${Number(r.views).toLocaleString()}`:""}<a href="${r.url}" target="_blank">원문 ↗</a></div></div>`}
+function bCard(r,q){return `<div class="card c-${r.cat}"><div class="meta"><span class="who">${esc(r.blog)}</span><span>${fmt(r.created_at)}</span>${r.ncat?`<span class="kind">${esc(r.ncat)}</span>`:""}${catSel(r,"blog")}</div>
+  <a class="ttl" href="${r.url}" target="_blank">${hl(r.title||"(제목 없음)",q)}</a>
+  <div class="txt clamp">${hl(r.text||"",q)}</div><div class="foot">${(r.text||"").length.toLocaleString()}자<a href="${r.url}" target="_blank">원문 ↗</a></div></div>`}
+function sCard(x){const S=x.summary||{},R=S._refs||{};
+  const refs=a=>(a||[]).map(n=>R[n]?`<a href="${R[n].url}" target="_blank">#${n}</a>`:"").join("");
+  const V=S.views||{};
+  return `<div class="card"><div class="meta"><span class="who">@${esc(x.account)}</span><span>${fmt(x.period_from)}~${fmt(x.period_to)}</span><span>글 ${x.n_posts}</span></div>
+  ${S.raw?`<div class="txt">${esc(S.raw)}</div>`:`<div class="one">${esc(S.one_line||"")}</div>
+  ${(S.ideas||[]).map(d=>`<div class="idea"><div><span class="tag c-${CATS.includes(d.asset)?d.asset:"기타"}">${esc(d.asset||"")}</span><br>${d.stance?`<span class="tag st-${esc(d.stance)}">${esc(d.stance)}</span>`:""}</div>
+    <div><b>${esc(d.title)}</b><p>${esc(d.detail)}</p><div class="refs">${refs(d.refs)}</div></div></div>`).join("")}
+  ${CATS.some(c=>V[c])?`<div class="asset">${CATS.filter(c=>V[c]).map(c=>`<div class="c-${c}"><b>${c}</b> ${esc(V[c])}</div>`).join("")}</div>`:""}
+  ${(S.watch||[]).length?`<div class="watch">${S.watch.map(w=>`<span>${esc(w)}</span>`).join("")}</div>`:""}
+  ${S.shift?`<div class="shift">↻ ${esc(S.shift)}</div>`:""}`}</div>`}
+function vCard(v){const s=v.summary||{},M=s.llm,L=s.local||{};const cat=(v.category||"기타").split("/")[0];
+  return `<div class="card c-${cat}"><a class="ttl" href="${v.url}" target="_blank">${esc(v.title)}</a>
+  <div class="meta"><span>${esc(v.channel||"")}</span><span>${v.published||""}</span><span class="kind">${esc(v.category||"")}</span></div>
+  ${M?`<div class="one">${esc(M.one_line||"")}</div><ul class="b">${(M.bullets||[]).map(b=>`<li>${esc(b)}</li>`).join("")}</ul>${M.view?`<div><b>뷰</b> ${esc(M.view)}</div>`:""}
+    ${M.by_asset?`<div class="asset">${CATS.filter(c=>(M.by_asset[c]||[]).length).map(c=>`<div class="c-${c}"><b>${c}</b><ul>${M.by_asset[c].map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`).join("")}</div>`:""}`:
+    `<div class="txt clamp">${(L.segments||[]).map(g=>`<a href="${v.url}&t=${g.t}s" target="_blank">${Math.floor(g.t/60)}:${String(g.t%60).padStart(2,"0")}</a> ${esc(g.text)}`).join("\n\n")}</div>`}</div>`}
+function wire(){
+  document.querySelectorAll("#catChips .chip").forEach(e=>e.onclick=()=>{const c=e.dataset.c;fCat.has(c)?fCat.delete(c):fCat.add(c);render()});
+  document.querySelectorAll("#kindChips .chip").forEach(e=>e.onclick=()=>{const k=e.dataset.k;fKind.has(k)?fKind.delete(k):fKind.add(k);render()});
+  document.querySelectorAll(".card select").forEach(s=>s.onchange=async()=>{
+    try{await rpc("xyt_set_cat",{p_kind:s.dataset.k,p_id:s.dataset.id,p_cat:s.value});
+      const arr=s.dataset.k==="x"?D.x:D.blog;const r=arr.find(x=>x.id===s.dataset.id);if(r&&s.value)r.cat=s.value;ls.set("xyt_cache",D);render()}
+    catch(e){alert("분류 변경 실패: "+e.message)}});
+  document.querySelectorAll(".clamp").forEach(e=>e.onclick=ev=>{if(ev.target.tagName!=="A")e.classList.toggle("open")});
+}
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{TAB=t.dataset.t;ls.set("xyt_tab",TAB);$("#who").value="";render();scrollTo(0,0)});
+$("#refresh").onclick=load;
+$("#days").onchange=()=>{ls.set("xyt_days",+$("#days").value);load()};
+$("#who").onchange=render;$("#q").oninput=render;
+$("#tokSave").onclick=()=>{const v=$("#tok").value.trim();if(!v)return;TOKEN=v;ls.set("xyt_token",v);$("#login").classList.add("hide");$("#filters").classList.remove("hide");load()};
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&TOKEN)load()});   // 앱으로 돌아오면 자동 새로고침
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+if(D)render();
+load();
+</script>
+</body>
+</html>
