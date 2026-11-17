@@ -31,6 +31,10 @@ button{cursor:pointer}
 .c-주식{--c:var(--eq)} .c-FICC{--c:var(--ust)} .c-기타{--c:var(--etc)}
 .chip.c-주식.on,.chip.c-FICC.on,.chip.c-기타.on{border-color:var(--c);color:var(--c)}
 .row select{flex:none;max-width:46%}
+.lrow{padding:7px 0 8px}
+.lchip{flex:none;padding:3px 11px;border-radius:14px;border:1px solid var(--line);color:var(--muted);font-size:13px;user-select:none;white-space:nowrap}
+.lchip.on{color:var(--text);border-color:var(--acc);background:var(--panel2);font-weight:600}
+.lchip .n{opacity:.6;margin-left:3px;font-size:11.5px}
 .row input{flex:1;min-width:120px}
 main{padding:10px;display:flex;flex-direction:column;gap:10px}
 .card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--c,var(--line));border-radius:10px;padding:10px 12px}
@@ -91,12 +95,12 @@ mark{background:#4c8dff44;color:inherit;border-radius:2px}
     <button id="refresh" title="새로고침">↻</button>
     <div class="sync" id="sync"></div></div>
   <div class="tabs">
-    <div class="tab on" data-t="x">X</div><div class="tab" data-t="blog">블로그</div><div class="tab" data-t="xsum">X 요약</div><div class="tab" data-t="yt">유튜브</div>
+    <div class="tab on" data-t="x">X</div><div class="tab" data-t="xsum">X 요약</div><div class="tab" data-t="blog">블로그</div><div class="tab" data-t="yt">유튜브</div>
   </div>
+  <div class="row lrow hide" id="listChips"></div>
 </header>
 <div class="filters" id="filters">
   <div class="row" id="catChips"></div>
-  <div class="row" id="kindChips"></div>
   <div class="row"><button id="whoBtn">전체 계정 ▾</button><input id="q" type="search" placeholder="검색"></div>
 </div>
 <main id="out"></main>
@@ -112,7 +116,7 @@ mark{background:#4c8dff44;color:inherit;border-radius:2px}
 <script>
 const SUPA_URL="https://qorhocgbewmtzbbtsicn.supabase.co";
 const SUPA_KEY="sb_publishable_xHWACo4Il2KEzGK9neDsUw_7QYae--X";   // 공개용 키 (데이터는 접속 키 없이는 못 읽음)
-const CATS=["주식","FICC","기타"], KINDS=["글","댓글","스레드","인용","RT"];
+const CATS=["주식","FICC","기타"];
 const $=s=>document.querySelector(s);
 const esc=s=>(s??"").toString().replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ls={get:(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -121,7 +125,22 @@ const ls={get:(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON
 (function(){const m=location.hash.match(/t=([\w-]+)/);if(m){ls.set("xyt_token",m[1]);history.replaceState(null,"",location.pathname)}})();
 let TOKEN=ls.get("xyt_token","");
 let TAB=ls.get("xyt_tab","x"), D=ls.get("xyt_cache",null);
-let WHO=ls.get("xyt_who",{}), fCat=new Set(CATS), fKind=new Set(["글","댓글","스레드","인용"]);
+let WHO=ls.get("xyt_who",{}), fCat=new Set(CATS);
+// PC에서 만든 리스트 (X·X 요약 공용 / 블로그 / 유튜브). 선택은 이 기기에 기억
+let LSEL=ls.get("xyt_list",{});
+const LK={x:"x",xsum:"x",blog:"bl",yt:"yt"};
+const nk=(k,v)=>k==="yt"?(v||""):(v||"").toLowerCase();
+const curList=()=>{const k=LK[TAB];return ((D&&D.lists&&D.lists[k])||[]).find(l=>l.name===LSEL[k])||null};
+const inL=v=>{const l=curList(),k=LK[TAB];return !l||l.members.some(m=>nk(k,m)===nk(k,v))};
+function renderLists(){
+  const k=LK[TAB], L=(D&&D.lists&&D.lists[k])||[], el=$("#listChips");
+  if(LSEL[k]&&!L.some(l=>l.name===LSEL[k]))LSEL[k]=null;      // PC에서 지워진 리스트
+  el.classList.toggle("hide",!L.length);
+  el.innerHTML=`<span class="lchip ${!LSEL[k]?"on":""}" data-l="">전체</span>`+
+    L.map(l=>`<span class="lchip ${LSEL[k]===l.name?"on":""}" data-l="${esc(l.name)}">${esc(l.name)}<span class="n">${l.members.length}</span></span>`).join("");
+  el.querySelectorAll(".lchip").forEach(c=>c.onclick=()=>{LSEL[k]=c.dataset.l||null;ls.set("xyt_list",LSEL);
+    for(const t in LK)if(LK[t]===k)WHO[t]="";ls.set("xyt_who",WHO);render();scrollTo(0,0)});
+}
 $("#days").value=String(ls.get("xyt_days",7));
 
 async function rpc(fn,body){
@@ -146,29 +165,29 @@ function render(){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===TAB));
   $("#filters").classList.toggle("hide",!D||TAB==="yt");
   if(!D){$("#out").innerHTML=`<div class="empty">데이터 없음</div>`;return}
+  renderLists();
   const q=$("#q").value.trim().toLowerCase(); let who=WHO[TAB]||"";
   if(TAB==="x"||TAB==="blog"){
     const rows0=(TAB==="x"?D.x:D.blog)||[], key=TAB==="x"?"account":"blog";
-    const names=[...new Set(rows0.map(r=>r[key]))].sort();
+    const names=[...new Set(rows0.filter(r=>inL(r[key])).map(r=>r[key]))].sort();
     const cur=who&&names.includes(who)?who:"";
     setWho(cur,TAB==="x"?"전체 계정":"전체 블로그",TAB==="x"?"@":"");
-    const base=rows0.filter(r=>(!cur||r[key]===cur)&&(TAB!=="x"||fKind.has(r.kind))&&(!q||JSON.stringify([r.text,r.title,r.reply_to_text]).toLowerCase().includes(q)));
+    const base=rows0.filter(r=>(cur?r[key]===cur:inL(r[key]))&&(TAB!=="x"||r.kind!=="RT")&&(!q||JSON.stringify([r.text,r.title,r.reply_to_text]).toLowerCase().includes(q)));
     $("#catChips").innerHTML=CATS.map(c=>`<span class="chip c-${c} ${fCat.has(c)?"on":""}" data-c="${c}">${c}<span class="n">${base.filter(r=>r.cat===c).length}</span></span>`).join("");
-    $("#kindChips").classList.toggle("hide",TAB!=="x");
-    $("#kindChips").innerHTML=KINDS.map(k=>`<span class="chip ${fKind.has(k)?"on":""}" data-k="${k}">${k}<span class="n">${rows0.filter(r=>r.kind===k).length}</span></span>`).join("");
     const rows=base.filter(r=>fCat.has(r.cat));
     $("#out").innerHTML=rows.map(r=>TAB==="x"?xCard(r,q):bCard(r,q)).join("")||`<div class="empty">조건에 맞는 글이 없습니다</div>`;
   }else if(TAB==="xsum"){
-    $("#kindChips").classList.add("hide");$("#catChips").innerHTML="";
-    const names=[...new Set((D.xsum||[]).map(s=>s.account))].sort();
+    $("#catChips").innerHTML="";
+    const names=[...new Set((D.xsum||[]).filter(s=>inL(s.account)).map(s=>s.account))].sort();
     if(who&&!names.includes(who))who="";
     setWho(who,"계정별 최신","@");
-    let rows=D.xsum||[];
+    let rows=(D.xsum||[]).filter(s=>inL(s.account));
     if(who)rows=rows.filter(s=>s.account===who);else{const seen=new Set();rows=rows.filter(s=>!seen.has(s.account)&&seen.add(s.account))}
     if(q)rows=rows.filter(s=>JSON.stringify(s.summary).toLowerCase().includes(q));
     $("#out").innerHTML=rows.map(sCard).join("")||`<div class="empty">요약이 없습니다 (PC의 X 요약 탭에서 생성)</div>`;
   }else{
-    $("#out").innerHTML=(D.videos||[]).map(vCard).join("")||`<div class="empty">유튜브 요약이 없습니다</div>`;
+    const l=curList(), vs=(D.videos||[]).filter(v=>!l||(v.sources||[]).some(inL));
+    $("#out").innerHTML=vs.map(vCard).join("")||`<div class="empty">${l?"이 리스트의 영상이 없습니다":"유튜브 요약이 없습니다"}</div>`;
   }
   wire();
 }
@@ -198,7 +217,6 @@ function vCard(v){const s=v.summary||{},M=s.llm,L=s.local||{};const cat=(v.categ
     `<div class="txt clamp">${(L.segments||[]).map(g=>`<a href="${esc(v.url)}&t=${g.t}s" target="_blank">${Math.floor(g.t/60)}:${String(g.t%60).padStart(2,"0")}</a> ${esc(g.text)}`).join("\n\n")}</div>`}</div>`}
 function wire(){
   document.querySelectorAll("#catChips .chip").forEach(e=>e.onclick=()=>{const c=e.dataset.c;fCat.has(c)?fCat.delete(c):fCat.add(c);render()});
-  document.querySelectorAll("#kindChips .chip").forEach(e=>e.onclick=()=>{const k=e.dataset.k;fKind.has(k)?fKind.delete(k):fKind.add(k);render()});
   document.querySelectorAll(".card select").forEach(s=>s.onchange=async()=>{
     try{await rpc("xyt_set_cat",{p_kind:s.dataset.k,p_id:s.dataset.id,p_cat:s.value});
       const arr=s.dataset.k==="x"?D.x:D.blog;const r=arr.find(x=>x.id===s.dataset.id);if(r&&s.value)r.cat=s.value;ls.set("xyt_cache",D);render()}
@@ -215,7 +233,7 @@ function drawerRows(){
   if(!D)return[];
   const key=TAB==="blog"?"blog":"account", src=TAB==="x"?D.x:TAB==="blog"?D.blog:TAB==="xsum"?D.xsum:[];
   const m=new Map();
-  for(const r of src||[]){const k=r[key];if(!k)continue;const o=m.get(k)||{n:0,last:"",c:{주식:0,FICC:0,기타:0}};
+  for(const r of src||[]){const k=r[key];if(!k||!inL(k)||(TAB==="x"&&r.kind==="RT"))continue;const o=m.get(k)||{n:0,last:"",c:{주식:0,FICC:0,기타:0}};
     o.n++;const t=r.created_at||r.period_to||"";if(t>o.last)o.last=t;if(o.c[r.cat]!=null)o.c[r.cat]++;m.set(k,o)}
   return [...m.entries()].sort((a,b)=>b[1].last.localeCompare(a[1].last));
 }
