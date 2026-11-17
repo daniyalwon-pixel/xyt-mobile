@@ -11,11 +11,13 @@
 :root{--bg:#0f1216;--panel:#161b22;--panel2:#1c232c;--line:#2a323d;--text:#e6e9ee;--muted:#8b95a3;--acc:#4c8dff;
   --eq:#e0864a;--ust:#4fb3a6;--etc:#8e8fa8;--green:#4cc76a;--warn:#e5b94e;--bad:#e5645e}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 "Pretendard","Malgun Gothic",system-ui,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
-header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top))}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 "Pretendard","Malgun Gothic",system-ui,sans-serif}
+html,body{height:100%}
+body{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+#scroller{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
+header{flex:none;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top))}
 /* 탭·리스트는 화면 아래(엄지 닿는 곳)에 고정 */
-#bnav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--panel);border-top:1px solid var(--line);padding:0 10px env(safe-area-inset-bottom)}
-body{padding-bottom:calc(var(--bnav,54px) + env(safe-area-inset-bottom))}
+#bnav{flex:none;z-index:6;background:var(--panel);border-top:1px solid var(--line);padding:0 10px env(safe-area-inset-bottom)}
 .top{display:flex;align-items:center;gap:8px}
 .top h1{font-size:16px;margin:0;color:var(--green)}
 .top .sync{font-size:11.5px;color:var(--muted);margin-left:auto;text-align:right}
@@ -98,11 +100,18 @@ mark{background:#4c8dff44;color:inherit;border-radius:2px}
     <button id="refresh" title="새로고침">↻</button>
     <div class="sync" id="sync"></div></div>
 </header>
+<div id="scroller">
 <div class="filters" id="filters">
   <div class="row" id="catChips"></div>
   <div class="row"><button id="whoBtn">전체 계정 ▾</button><input id="q" type="search" placeholder="검색"></div>
 </div>
 <main id="out"></main>
+<div class="login hide" id="login">
+  <h2 style="color:var(--green)">xyt digest</h2>
+  <p style="color:var(--muted)">PC의 xyt digest → ⚙ → <b>휴대폰 앱</b>에서 QR을 찍어 여세요.<br>또는 접속 키를 붙여넣으세요.</p>
+  <input id="tok" placeholder="접속 키"><button id="tokSave">저장</button>
+</div>
+</div>
 <nav id="bnav">
   <div class="row lrow hide" id="listChips"></div>
   <div class="tabs">
@@ -112,11 +121,6 @@ mark{background:#4c8dff44;color:inherit;border-radius:2px}
 <div id="scrim"></div>
 <aside id="drawer"><div class="dh"><b id="dTitle">계정</b><button id="dClose">✕</button></div>
   <input id="dq" type="search" placeholder="계정 찾기"><div id="dlist"></div></aside>
-<div class="login hide" id="login">
-  <h2 style="color:var(--green)">xyt digest</h2>
-  <p style="color:var(--muted)">PC의 xyt digest → ⚙ → <b>휴대폰 앱</b>에서 QR을 찍어 여세요.<br>또는 접속 키를 붙여넣으세요.</p>
-  <input id="tok" placeholder="접속 키"><button id="tokSave">저장</button>
-</div>
 
 <script>
 const SUPA_URL="https://qorhocgbewmtzbbtsicn.supabase.co";
@@ -137,17 +141,15 @@ const LK={x:"x",xsum:"x",blog:"bl",yt:"yt"};
 const nk=(k,v)=>k==="yt"?(v||""):(v||"").toLowerCase();
 const curList=()=>{const k=LK[TAB];return ((D&&D.lists&&D.lists[k])||[]).find(l=>l.name===LSEL[k])||null};
 const inL=v=>{const l=curList(),k=LK[TAB];return !l||l.members.some(m=>nk(k,m)===nk(k,v))};
-const padBottom=()=>document.body.style.setProperty("--bnav",$("#bnav").offsetHeight+"px");  // 아래 막대 높이만큼 본문 여백
-addEventListener("resize",padBottom);
+const toTop=()=>{$("#scroller").scrollTop=0};   // 본문(스크롤 영역)을 맨 위로
 function renderLists(){
   const k=LK[TAB], L=(D&&D.lists&&D.lists[k])||[], el=$("#listChips");
   if(LSEL[k]&&!L.some(l=>l.name===LSEL[k]))LSEL[k]=null;      // PC에서 지워진 리스트
   el.classList.toggle("hide",!L.length);
-  padBottom();
   el.innerHTML=`<span class="lchip ${!LSEL[k]?"on":""}" data-l="">전체</span>`+
     L.map(l=>`<span class="lchip ${LSEL[k]===l.name?"on":""}" data-l="${esc(l.name)}">${esc(l.name)}<span class="n">${l.members.length}</span></span>`).join("");
   el.querySelectorAll(".lchip").forEach(c=>c.onclick=()=>{LSEL[k]=c.dataset.l||null;ls.set("xyt_list",LSEL);
-    for(const t in LK)if(LK[t]===k)WHO[t]="";ls.set("xyt_who",WHO);render();scrollTo(0,0)});
+    for(const t in LK)if(LK[t]===k)WHO[t]="";ls.set("xyt_who",WHO);render();toTop()});
 }
 $("#days").value=String(ls.get("xyt_days",7));
 
@@ -231,7 +233,7 @@ function wire(){
     catch(e){alert("분류 변경 실패: "+e.message)}});
   document.querySelectorAll(".clamp").forEach(e=>e.onclick=ev=>{if(ev.target.tagName!=="A")e.classList.toggle("open")});
 }
-document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{TAB=t.dataset.t;ls.set("xyt_tab",TAB);render();scrollTo(0,0)});
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{TAB=t.dataset.t;ls.set("xyt_tab",TAB);render();toTop()});
 $("#refresh").onclick=load;
 $("#days").onchange=()=>{ls.set("xyt_days",+$("#days").value);load()};
 $("#q").oninput=render;
@@ -255,7 +257,7 @@ function renderDrawer(){
     rows.map(([k,o])=>{const bar=TAB==="xsum"?"":`<span class="bar3">${CATS.map(c=>o.c[c]?`<i class="c-${c}" style="background:var(--c);flex:${o.c[c]}"></i>`:"").join("")}</span>`;
       return `<div class="acc ${k===cur?"on":""}" data-a="${esc(k)}"><span>${esc(pre+k)}<span class="t">최근 ${fmt(o.last)}</span></span><span class="n">${o.n}${unit}${bar}</span></div>`}).join("")||
     `<div class="empty" style="margin:10px">${TAB==="yt"?"유튜브 탭에는 계정 목록이 없습니다":"목록 없음"}</div>`;
-  document.querySelectorAll("#dlist .acc").forEach(e=>e.onclick=()=>{WHO[TAB]=e.dataset.a;ls.set("xyt_who",WHO);closeDrawer();render();scrollTo(0,0)});
+  document.querySelectorAll("#dlist .acc").forEach(e=>e.onclick=()=>{WHO[TAB]=e.dataset.a;ls.set("xyt_who",WHO);closeDrawer();render();toTop()});
 }
 function openDrawer(){$("#dq").value="";renderDrawer();$("#drawer").classList.add("on");$("#scrim").classList.add("on");try{history.pushState({d:1},"")}catch(e){}}
 function closeDrawer(fromPop){$("#drawer").classList.remove("on");$("#scrim").classList.remove("on");if(!fromPop&&history.state&&history.state.d)history.back()}
