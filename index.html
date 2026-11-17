@@ -63,6 +63,24 @@ ul.b{margin:4px 0;padding-left:18px}
 .login input{width:100%;margin:12px 0}
 mark{background:#4c8dff44;color:inherit;border-radius:2px}
 .hide{display:none!important}
+#whoBtn{flex:none;max-width:52%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+#whoBtn.on{border-color:var(--green);color:var(--green)}
+#menuBtn{padding:5px 10px}
+#scrim{position:fixed;inset:0;background:#0009;z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+#scrim.on{opacity:1;pointer-events:auto}
+#drawer{position:fixed;top:0;right:0;bottom:0;width:min(82vw,330px);background:var(--panel);border-left:1px solid var(--line);z-index:21;
+  transform:translateX(100%);transition:transform .22s ease;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+#drawer.on{transform:none}
+#drawer .dh{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+#drawer .dh b{font-size:15px}#drawer .dh button{margin-left:auto}
+#dq{margin:8px 12px;width:calc(100% - 24px)}
+#dlist{flex:1;overflow-y:auto;padding:0 6px 20px}
+.acc{display:flex;align-items:center;gap:8px;padding:10px 10px;border-radius:8px;font-size:14.5px}
+.acc.on{background:var(--panel2);color:var(--green);font-weight:600}
+.acc .n{margin-left:auto;color:var(--muted);font-size:12.5px;text-align:right}
+.acc .t{display:block;font-size:11px;color:var(--muted);font-weight:400}
+.acc .bar3{display:flex;gap:2px;width:42px;height:4px;border-radius:2px;overflow:hidden;background:var(--line);margin-top:3px}
+.acc .bar3 i{display:block;height:100%}
 .err{color:var(--bad)}
 </style>
 </head>
@@ -70,7 +88,7 @@ mark{background:#4c8dff44;color:inherit;border-radius:2px}
 <header>
   <div class="top"><h1>xyt digest</h1>
     <select id="days" title="기간"><option value="1">1일</option><option value="3">3일</option><option value="7" selected>1주</option><option value="30">1달</option></select>
-    <button id="refresh" title="새로고침">↻</button>
+    <button id="refresh" title="새로고침">↻</button><button id="menuBtn" title="계정 목록">☰</button>
     <div class="sync" id="sync"></div></div>
   <div class="tabs">
     <div class="tab on" data-t="x">X</div><div class="tab" data-t="blog">블로그</div><div class="tab" data-t="xsum">X 요약</div><div class="tab" data-t="yt">유튜브</div>
@@ -79,9 +97,12 @@ mark{background:#4c8dff44;color:inherit;border-radius:2px}
 <div class="filters" id="filters">
   <div class="row" id="catChips"></div>
   <div class="row" id="kindChips"></div>
-  <div class="row"><select id="who"></select><input id="q" type="search" placeholder="검색"></div>
+  <div class="row"><button id="whoBtn">전체 계정 ▾</button><input id="q" type="search" placeholder="검색"></div>
 </div>
 <main id="out"></main>
+<div id="scrim"></div>
+<aside id="drawer"><div class="dh"><b id="dTitle">계정</b><button id="dClose">✕</button></div>
+  <input id="dq" type="search" placeholder="계정 찾기"><div id="dlist"></div></aside>
 <div class="login hide" id="login">
   <h2 style="color:var(--green)">xyt digest</h2>
   <p style="color:var(--muted)">PC의 xyt digest → ⚙ → <b>휴대폰 앱</b>에서 QR을 찍어 여세요.<br>또는 접속 키를 붙여넣으세요.</p>
@@ -100,7 +121,7 @@ const ls={get:(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON
 (function(){const m=location.hash.match(/t=([\w-]+)/);if(m){ls.set("xyt_token",m[1]);history.replaceState(null,"",location.pathname)}})();
 let TOKEN=ls.get("xyt_token","");
 let TAB=ls.get("xyt_tab","x"), D=ls.get("xyt_cache",null);
-let fCat=new Set(CATS), fKind=new Set(["글","댓글","스레드","인용"]);
+let WHO=ls.get("xyt_who",{}), fCat=new Set(CATS), fKind=new Set(["글","댓글","스레드","인용"]);
 $("#days").value=String(ls.get("xyt_days",7));
 
 async function rpc(fn,body){
@@ -125,12 +146,12 @@ function render(){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===TAB));
   $("#filters").classList.toggle("hide",!D||TAB==="yt");
   if(!D){$("#out").innerHTML=`<div class="empty">데이터 없음</div>`;return}
-  const q=$("#q").value.trim().toLowerCase(), who=$("#who").value;
+  const q=$("#q").value.trim().toLowerCase(); let who=WHO[TAB]||"";
   if(TAB==="x"||TAB==="blog"){
     const rows0=(TAB==="x"?D.x:D.blog)||[], key=TAB==="x"?"account":"blog";
     const names=[...new Set(rows0.map(r=>r[key]))].sort();
     const cur=who&&names.includes(who)?who:"";
-    $("#who").innerHTML=`<option value="">${TAB==="x"?"전체 계정":"전체 블로그"}</option>`+names.map(n=>`<option ${n===cur?"selected":""}>${esc(n)}</option>`).join("");
+    setWho(cur,TAB==="x"?"전체 계정":"전체 블로그",TAB==="x"?"@":"");
     const base=rows0.filter(r=>(!cur||r[key]===cur)&&(TAB!=="x"||fKind.has(r.kind))&&(!q||JSON.stringify([r.text,r.title,r.reply_to_text]).toLowerCase().includes(q)));
     $("#catChips").innerHTML=CATS.map(c=>`<span class="chip c-${c} ${fCat.has(c)?"on":""}" data-c="${c}">${c}<span class="n">${base.filter(r=>r.cat===c).length}</span></span>`).join("");
     $("#kindChips").classList.toggle("hide",TAB!=="x");
@@ -140,7 +161,8 @@ function render(){
   }else if(TAB==="xsum"){
     $("#kindChips").classList.add("hide");$("#catChips").innerHTML="";
     const names=[...new Set((D.xsum||[]).map(s=>s.account))].sort();
-    $("#who").innerHTML=`<option value="">계정별 최신</option>`+names.map(n=>`<option ${n===who?"selected":""}>${esc(n)}</option>`).join("");
+    if(who&&!names.includes(who))who="";
+    setWho(who,"계정별 최신","@");
     let rows=D.xsum||[];
     if(who)rows=rows.filter(s=>s.account===who);else{const seen=new Set();rows=rows.filter(s=>!seen.has(s.account)&&seen.add(s.account))}
     if(q)rows=rows.filter(s=>JSON.stringify(s.summary).toLowerCase().includes(q));
@@ -154,12 +176,12 @@ const catSel=(r,kind)=>`<select data-k="${kind}" data-id="${esc(r.id)}">${CATS.m
 function xCard(r,q){return `<div class="card c-${r.cat}"><div class="meta"><span class="who">@${esc(r.account)}</span><span>${fmt(r.created_at)}</span><span class="kind">${esc(r.kind)}</span>${catSel(r,"x")}</div>
   ${r.reply_to_text?`<div class="ctx">↳ ${hl(r.reply_to_text.slice(0,300),q)}</div>`:""}
   <div class="txt">${hl(r.text,q)}</div>${r.quoted_text?`<div class="ctx">❝ ${hl(r.quoted_text,q)}</div>`:""}
-  <div class="foot">${r.likes!=null?`♥ ${r.likes}`:""}${r.views?` · 조회 ${Number(r.views).toLocaleString()}`:""}<a href="${r.url}" target="_blank">원문 ↗</a></div></div>`}
+  <div class="foot">${r.likes!=null?`♥ ${r.likes}`:""}${r.views?` · 조회 ${Number(r.views).toLocaleString()}`:""}<a href="${esc(r.url)}" target="_blank">원문 ↗</a></div></div>`}
 function bCard(r,q){return `<div class="card c-${r.cat}"><div class="meta"><span class="who">${esc(r.blog)}</span><span>${fmt(r.created_at)}</span>${r.ncat?`<span class="kind">${esc(r.ncat)}</span>`:""}${catSel(r,"blog")}</div>
-  <a class="ttl" href="${r.url}" target="_blank">${hl(r.title||"(제목 없음)",q)}</a>
-  <div class="txt clamp">${hl(r.text||"",q)}</div><div class="foot">${(r.text||"").length.toLocaleString()}자<a href="${r.url}" target="_blank">원문 ↗</a></div></div>`}
+  <a class="ttl" href="${esc(r.url)}" target="_blank">${hl(r.title||"(제목 없음)",q)}</a>
+  <div class="txt clamp">${hl(r.text||"",q)}</div><div class="foot">${(r.text||"").length.toLocaleString()}자<a href="${esc(r.url)}" target="_blank">원문 ↗</a></div></div>`}
 function sCard(x){const S=x.summary||{},R=S._refs||{};
-  const refs=a=>(a||[]).map(n=>R[n]?`<a href="${R[n].url}" target="_blank">#${n}</a>`:"").join("");
+  const refs=a=>(a||[]).map(n=>R[n]?`<a href="${esc(R[n].url)}" target="_blank">#${n}</a>`:"").join("");
   const V=S.views||{};
   return `<div class="card"><div class="meta"><span class="who">@${esc(x.account)}</span><span>${fmt(x.period_from)}~${fmt(x.period_to)}</span><span>글 ${x.n_posts}</span></div>
   ${S.raw?`<div class="txt">${esc(S.raw)}</div>`:`<div class="one">${esc(S.one_line||"")}</div>
@@ -169,11 +191,11 @@ function sCard(x){const S=x.summary||{},R=S._refs||{};
   ${(S.watch||[]).length?`<div class="watch">${S.watch.map(w=>`<span>${esc(w)}</span>`).join("")}</div>`:""}
   ${S.shift?`<div class="shift">↻ ${esc(S.shift)}</div>`:""}`}</div>`}
 function vCard(v){const s=v.summary||{},M=s.llm,L=s.local||{};const cat=(v.category||"기타").split("/")[0];
-  return `<div class="card c-${cat}"><a class="ttl" href="${v.url}" target="_blank">${esc(v.title)}</a>
+  return `<div class="card c-${cat}"><a class="ttl" href="${esc(v.url)}" target="_blank">${esc(v.title)}</a>
   <div class="meta"><span>${esc(v.channel||"")}</span><span>${v.published||""}</span><span class="kind">${esc(v.category||"")}</span></div>
   ${M?`<div class="one">${esc(M.one_line||"")}</div><ul class="b">${(M.bullets||[]).map(b=>`<li>${esc(b)}</li>`).join("")}</ul>${M.view?`<div><b>뷰</b> ${esc(M.view)}</div>`:""}
     ${M.by_asset?`<div class="asset">${CATS.filter(c=>(M.by_asset[c]||[]).length).map(c=>`<div class="c-${c}"><b>${c}</b><ul>${M.by_asset[c].map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`).join("")}</div>`:""}`:
-    `<div class="txt clamp">${(L.segments||[]).map(g=>`<a href="${v.url}&t=${g.t}s" target="_blank">${Math.floor(g.t/60)}:${String(g.t%60).padStart(2,"0")}</a> ${esc(g.text)}`).join("\n\n")}</div>`}</div>`}
+    `<div class="txt clamp">${(L.segments||[]).map(g=>`<a href="${esc(v.url)}&t=${g.t}s" target="_blank">${Math.floor(g.t/60)}:${String(g.t%60).padStart(2,"0")}</a> ${esc(g.text)}`).join("\n\n")}</div>`}</div>`}
 function wire(){
   document.querySelectorAll("#catChips .chip").forEach(e=>e.onclick=()=>{const c=e.dataset.c;fCat.has(c)?fCat.delete(c):fCat.add(c);render()});
   document.querySelectorAll("#kindChips .chip").forEach(e=>e.onclick=()=>{const k=e.dataset.k;fKind.has(k)?fKind.delete(k):fKind.add(k);render()});
@@ -183,10 +205,43 @@ function wire(){
     catch(e){alert("분류 변경 실패: "+e.message)}});
   document.querySelectorAll(".clamp").forEach(e=>e.onclick=ev=>{if(ev.target.tagName!=="A")e.classList.toggle("open")});
 }
-document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{TAB=t.dataset.t;ls.set("xyt_tab",TAB);$("#who").value="";render();scrollTo(0,0)});
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{TAB=t.dataset.t;ls.set("xyt_tab",TAB);render();scrollTo(0,0)});
 $("#refresh").onclick=load;
 $("#days").onchange=()=>{ls.set("xyt_days",+$("#days").value);load()};
-$("#who").onchange=render;$("#q").oninput=render;
+$("#q").oninput=render;
+function setWho(v,all,pre){$("#whoBtn").textContent=(v?pre+v:all)+" ▾";$("#whoBtn").classList.toggle("on",!!v)}
+// 우측 계정 패널
+function drawerRows(){
+  if(!D)return[];
+  const key=TAB==="blog"?"blog":"account", src=TAB==="x"?D.x:TAB==="blog"?D.blog:TAB==="xsum"?D.xsum:[];
+  const m=new Map();
+  for(const r of src||[]){const k=r[key];if(!k)continue;const o=m.get(k)||{n:0,last:"",c:{주식:0,FICC:0,기타:0}};
+    o.n++;const t=r.created_at||r.period_to||"";if(t>o.last)o.last=t;if(o.c[r.cat]!=null)o.c[r.cat]++;m.set(k,o)}
+  return [...m.entries()].sort((a,b)=>b[1].last.localeCompare(a[1].last));
+}
+function renderDrawer(){
+  const pre=TAB==="blog"?"":"@", f=$("#dq").value.trim().toLowerCase(), cur=WHO[TAB]||"";
+  $("#dTitle").textContent=TAB==="blog"?"블로그":"계정";
+  const rows=drawerRows().filter(([k])=>!f||k.toLowerCase().includes(f));
+  const tot=rows.reduce((a,[,o])=>a+o.n,0);
+  const unit=TAB==="xsum"?"건":"개";
+  $("#dlist").innerHTML=`<div class="acc ${cur?"":"on"}" data-a="">${TAB==="xsum"?"계정별 최신":"전체"}<span class="n">${tot}${unit}</span></div>`+
+    rows.map(([k,o])=>{const bar=TAB==="xsum"?"":`<span class="bar3">${CATS.map(c=>o.c[c]?`<i class="c-${c}" style="background:var(--c);flex:${o.c[c]}"></i>`:"").join("")}</span>`;
+      return `<div class="acc ${k===cur?"on":""}" data-a="${esc(k)}"><span>${esc(pre+k)}<span class="t">최근 ${fmt(o.last)}</span></span><span class="n">${o.n}${unit}${bar}</span></div>`}).join("")||
+    `<div class="empty" style="margin:10px">${TAB==="yt"?"유튜브 탭에는 계정 목록이 없습니다":"목록 없음"}</div>`;
+  document.querySelectorAll("#dlist .acc").forEach(e=>e.onclick=()=>{WHO[TAB]=e.dataset.a;ls.set("xyt_who",WHO);closeDrawer();render();scrollTo(0,0)});
+}
+function openDrawer(){$("#dq").value="";renderDrawer();$("#drawer").classList.add("on");$("#scrim").classList.add("on")}
+function closeDrawer(){$("#drawer").classList.remove("on");$("#scrim").classList.remove("on")}
+$("#menuBtn").onclick=openDrawer;$("#whoBtn").onclick=openDrawer;$("#dClose").onclick=closeDrawer;$("#scrim").onclick=closeDrawer;
+$("#dq").oninput=renderDrawer;
+// 스와이프: 화면 오른쪽 끝에서 왼쪽으로 → 열기, 패널을 오른쪽으로 → 닫기
+let sx=null,sy=0,edge=false;
+document.addEventListener("touchstart",e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;edge=sx>innerWidth-28},{passive:true});
+document.addEventListener("touchend",e=>{if(sx==null)return;const t=e.changedTouches[0],dx=t.clientX-sx,dy=Math.abs(t.clientY-sy);
+  const open=$("#drawer").classList.contains("on");
+  if(dy<60){if(!open&&edge&&dx<-50&&TAB!=="yt")openDrawer();else if(open&&dx>60)closeDrawer()}sx=null},{passive:true});
+history.scrollRestoration="manual";
 $("#tokSave").onclick=()=>{const v=$("#tok").value.trim();if(!v)return;TOKEN=v;ls.set("xyt_token",v);$("#login").classList.add("hide");$("#filters").classList.remove("hide");load()};
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&TOKEN)load()});   // 앱으로 돌아오면 자동 새로고침
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
