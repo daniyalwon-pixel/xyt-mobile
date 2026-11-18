@@ -142,6 +142,16 @@ const nk=(k,v)=>k==="yt"?(v||""):(v||"").toLowerCase();
 const curList=()=>{const k=LK[TAB];return ((D&&D.lists&&D.lists[k])||[]).find(l=>l.name===LSEL[k])||null};
 const inL=v=>{const l=curList(),k=LK[TAB];return !l||l.members.some(m=>nk(k,m)===nk(k,v))};
 const toTop=()=>{$("#scroller").scrollTop=0};   // 본문(스크롤 영역)을 맨 위로
+// 글이 많아도 버벅이지 않게: 처음 60개만 그리고, 아래로 내려가면 60개씩 이어서 그림
+const CHUNK=60; let PG={rows:[],fn:null,q:"",n:0};
+function paint(rows,fn,q,empty){PG={rows,fn,q,n:0};$("#out").innerHTML=rows.length?"":empty;more()}
+function more(){
+  if(PG.n>=PG.rows.length)return;
+  const part=PG.rows.slice(PG.n,PG.n+CHUNK);PG.n+=part.length;
+  $("#out").insertAdjacentHTML("beforeend",part.map(r=>PG.fn(r,PG.q)).join(""));
+  wire();
+}
+$("#scroller").addEventListener("scroll",()=>{const e=$("#scroller");if(e.scrollTop+e.clientHeight>e.scrollHeight-1500)more()},{passive:true});
 function renderLists(){
   const k=LK[TAB], L=(D&&D.lists&&D.lists[k])||[], el=$("#listChips");
   if(LSEL[k]&&!L.some(l=>l.name===LSEL[k]))LSEL[k]=null;      // PC에서 지워진 리스트
@@ -176,6 +186,7 @@ function render(){
   $("#filters").classList.toggle("hide",!D||TAB==="yt");
   if(!D){$("#out").innerHTML=`<div class="empty">데이터 없음</div>`;return}
   renderLists();
+  PG={rows:[],fn:null,q:"",n:0};   // 탭이 바뀌면 이전 목록의 '이어 그리기'는 버림
   const q=$("#q").value.trim().toLowerCase(); let who=WHO[TAB]||"";
   if(TAB==="x"||TAB==="blog"){
     const rows0=(TAB==="x"?D.x:D.blog)||[], key=TAB==="x"?"account":"blog";
@@ -185,7 +196,7 @@ function render(){
     const base=rows0.filter(r=>(cur?r[key]===cur:inL(r[key]))&&(TAB!=="x"||r.kind!=="RT")&&(!q||JSON.stringify([r.text,r.title,r.reply_to_text]).toLowerCase().includes(q)));
     $("#catChips").innerHTML=CATS.map(c=>`<span class="chip c-${c} ${fCat.has(c)?"on":""}" data-c="${c}">${c}<span class="n">${base.filter(r=>r.cat===c).length}</span></span>`).join("");
     const rows=base.filter(r=>fCat.has(r.cat));
-    $("#out").innerHTML=rows.map(r=>TAB==="x"?xCard(r,q):bCard(r,q)).join("")||`<div class="empty">조건에 맞는 글이 없습니다</div>`;
+    paint(rows,TAB==="x"?xCard:bCard,q,`<div class="empty">조건에 맞는 글이 없습니다</div>`);
   }else if(TAB==="xsum"){
     $("#catChips").innerHTML="";
     const names=[...new Set((D.xsum||[]).filter(s=>inL(s.account)).map(s=>s.account))].sort();
