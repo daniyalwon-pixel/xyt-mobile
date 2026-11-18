@@ -14,7 +14,7 @@
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 "Pretendard","Malgun Gothic",system-ui,sans-serif}
 html,body{height:100%}
 body{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
-#scroller{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
+#scroller{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
 header{flex:none;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top))}
 /* 탭·리스트는 화면 아래(엄지 닿는 곳)에 고정 */
 #bnav{flex:none;z-index:6;background:var(--panel);border-top:1px solid var(--line);padding:0 10px env(safe-area-inset-bottom)}
@@ -37,12 +37,12 @@ button{cursor:pointer}
 .chip.c-주식.on,.chip.c-FICC.on,.chip.c-기타.on{border-color:var(--c);color:var(--c)}
 .row select{flex:none;max-width:46%}
 .lrow{padding:7px 0 6px;border-bottom:1px solid var(--line)}
-.lchip{flex:none;padding:3px 11px;border-radius:14px;border:1px solid var(--line);color:var(--muted);font-size:13px;user-select:none;white-space:nowrap}
+.lchip{flex:none;padding:4px 12px;border-radius:14px;border:1px solid var(--line);color:var(--muted);font-size:15px;user-select:none;white-space:nowrap}
 .lchip.on{color:var(--text);border-color:var(--acc);background:var(--panel2);font-weight:600}
-.lchip .n{opacity:.6;margin-left:3px;font-size:11.5px}
+.lchip .n{opacity:.6;margin-left:3px;font-size:13px}
 .row input{flex:1;min-width:120px}
 main{padding:10px;display:flex;flex-direction:column;gap:10px}
-.card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--c,var(--line));border-radius:10px;padding:10px 12px}
+.card{min-width:0;overflow-wrap:anywhere;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--c,var(--line));border-radius:10px;padding:10px 12px}
 .meta{display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
 .who{color:var(--green);font-weight:600}
 .kind{padding:0 6px;border-radius:4px;border:1px solid var(--line);font-size:11.5px}
@@ -55,7 +55,7 @@ main{padding:10px;display:flex;flex-direction:column;gap:10px}
 a{color:var(--acc)}
 .foot{display:flex;margin-top:6px;font-size:12.5px;color:var(--muted)} .foot a{margin-left:auto}
 .one{font-weight:700;margin:6px 0 4px}
-.idea{display:grid;grid-template-columns:auto 1fr;gap:3px 8px;padding:6px 0;border-top:1px dashed var(--line)}
+.idea{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 8px;padding:6px 0;border-top:1px dashed var(--line)}
 .tag{font-size:11.5px;padding:0 6px;border-radius:4px;border:1px solid var(--c,var(--line));color:var(--c,var(--muted));white-space:nowrap;display:inline-block;margin-bottom:2px}
 .st-강세{color:#e5645e;border-color:#e5645e66}.st-약세{color:#4c8dff;border-color:#4c8dff66}
 .idea b{font-size:14.5px}.idea p{margin:2px 0 0;color:#cdd3dc;font-size:14px}
@@ -263,16 +263,21 @@ function openDrawer(){$("#dq").value="";renderDrawer();$("#drawer").classList.ad
 function closeDrawer(fromPop){$("#drawer").classList.remove("on");$("#scrim").classList.remove("on");if(!fromPop&&history.state&&history.state.d)history.back()}
 $("#menuBtn").onclick=openDrawer;$("#whoBtn").onclick=openDrawer;$("#dClose").onclick=closeDrawer;$("#scrim").onclick=closeDrawer;
 $("#dq").oninput=renderDrawer;
-// 스와이프: 화면에서 오른쪽으로 밀기 → 열기, 왼쪽으로 밀기 → 닫기
-// (안드로이드는 화면 맨 가장자리 스와이프를 '뒤로가기'로 가져가므로 가장자리가 아닌 곳에서도 인식)
+// 스와이프: 오른쪽으로 밀기 → 다음 탭, 왼쪽으로 밀기 → 이전 탭 (계정 패널은 ☰·'전체 계정' 버튼으로 열기)
+// 계정 패널이 열려 있을 땐 왼쪽으로 밀어 닫기. 분류·리스트 줄(가로 스크롤)과 입력칸 위에서는 무시
+const TABS=["x","xsum","blog","yt"], SWIPE_NEXT=1;   // 방향을 바꾸려면 SWIPE_NEXT=-1
+function switchTab(d){const i=TABS.indexOf(TAB)+d;if(i<0||i>=TABS.length)return;
+  TAB=TABS[i];ls.set("xyt_tab",TAB);render();toTop();
+  const o=$("#out");o.style.transition="none";o.style.transform=`translateX(${d>0?-24:24}px)`;o.style.opacity=".4";
+  requestAnimationFrame(()=>{o.style.transition="transform .18s ease,opacity .18s ease";o.style.transform="";o.style.opacity=""})}
 let sx=null,sy=0,ok=false;
 document.addEventListener("touchstart",e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;
   ok=!e.target.closest(".row,select,input,textarea,.clamp.open")},{passive:true});
 document.addEventListener("touchend",e=>{if(sx==null)return;const t=e.changedTouches[0],dx=t.clientX-sx,dy=Math.abs(t.clientY-sy);
   const open=$("#drawer").classList.contains("on");
   if(dy<Math.max(50,Math.abs(dx)*0.6)){
-    if(!open&&ok&&dx>70&&sx<innerWidth*0.6&&TAB!=="yt")openDrawer();
-    else if(open&&dx<-60)closeDrawer()}
+    if(open){if(dx<-60)closeDrawer()}
+    else if(ok&&Math.abs(dx)>70)switchTab(dx>0?SWIPE_NEXT:-SWIPE_NEXT)}
   sx=null},{passive:true});
 // 휴대폰 '뒤로가기'로 패널 닫기
 window.addEventListener("popstate",()=>{if($("#drawer").classList.contains("on"))closeDrawer(true)});
